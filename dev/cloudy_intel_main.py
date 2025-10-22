@@ -222,7 +222,7 @@ class CloudyIntel:
         memory = MemorySaver()
         self.graph = graph_builder.compile(checkpointer=memory)
     
-    def run(self, user_problem: str, max_iterations: int = 5) -> Dict[str, Any]:
+    async def run(self, user_problem: str, max_iterations: int = 5) -> Dict[str, Any]:
         """Run the complete CloudyIntel workflow."""
         print(f"🚀 Starting CloudyIntel for: {user_problem}")
         print(f"☁️  Cloud Provider: {self.cloud_provider.upper()}")
@@ -235,7 +235,7 @@ class CloudyIntel:
         
         # Run the graph
         try:
-            result = self.graph.invoke(initial_state)
+            result = await self.graph.ainvoke(initial_state)
             
             print("\n✅ CloudyIntel completed successfully!")
             print(f"📊 Final Phase: {result['current_phase']}")
@@ -303,7 +303,7 @@ class CloudyIntel:
         
         return summary
 
-def main():
+async def main():
     """Main function for running CloudyIntel."""
     # Example usage
     user_problem = "Deploy a scalable e-commerce backend with high availability and security"
@@ -314,7 +314,7 @@ def main():
     cloudy_intel = CloudyIntel(cloud_provider=cloud_provider, use_rag=use_rag)
     
     # Run the workflow
-    result = cloudy_intel.run(user_problem, max_iterations=5)
+    result = await cloudy_intel.run(user_problem, max_iterations=5)
     
     # Get and print summary
     summary = cloudy_intel.get_architecture_summary(result)
@@ -323,4 +323,5 @@ def main():
     return result
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())

@@ -23,7 +23,7 @@ llm_with_tools = llm.bind_tools(tools)
 # PHASE 1: ARCHITECT TEAM
 # =============================================================================
 
-def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
+async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     """Supervisor that coordinates all architect agents."""
     system_prompt = f"""
     You are the Architect Supervisor for {state['cloud_provider'].upper()} cloud architecture.
@@ -46,7 +46,7 @@ def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = state.copy()
     new_state["messages"].append(response)
@@ -55,7 +55,7 @@ def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def compute_architect(state: CloudyIntelState) -> CloudyIntelState:
+async def compute_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure compute domain architect."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Compute Domain Architect.
@@ -73,7 +73,7 @@ def compute_architect(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm_with_tools.invoke(messages)
+    response = await llm_with_tools.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "compute_architect")
     new_state["messages"].append(response)
@@ -84,7 +84,7 @@ def compute_architect(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def network_architect(state: CloudyIntelState) -> CloudyIntelState:
+async def network_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure network domain architect."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Network Domain Architect.
@@ -103,7 +103,7 @@ def network_architect(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm_with_tools.invoke(messages)
+    response = await llm_with_tools.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "network_architect")
     new_state["messages"].append(response)
@@ -114,7 +114,7 @@ def network_architect(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def storage_architect(state: CloudyIntelState) -> CloudyIntelState:
+async def storage_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure storage domain architect."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Storage Domain Architect.
@@ -132,7 +132,7 @@ def storage_architect(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm_with_tools.invoke(messages)
+    response = await llm_with_tools.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "storage_architect")
     new_state["messages"].append(response)
@@ -143,7 +143,7 @@ def storage_architect(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def database_architect(state: CloudyIntelState) -> CloudyIntelState:
+async def database_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure database domain architect."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Database Domain Architect.
@@ -161,7 +161,7 @@ def database_architect(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm_with_tools.invoke(messages)
+    response = await llm_with_tools.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "database_architect")
     new_state["messages"].append(response)
@@ -176,7 +176,7 @@ def database_architect(state: CloudyIntelState) -> CloudyIntelState:
 # PHASE 2: VALIDATOR TEAM
 # =============================================================================
 
-def validator_supervisor(state: CloudyIntelState) -> CloudyIntelState:
+async def validator_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     """Supervisor that coordinates all validator agents."""
     system_prompt = f"""
     You are the Validator Supervisor for {state['cloud_provider'].upper()} architecture validation.
@@ -194,7 +194,7 @@ def validator_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = state.copy()
     new_state["messages"].append(response)
@@ -204,7 +204,7 @@ def validator_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def compute_validator(state: CloudyIntelState) -> CloudyIntelState:
+async def compute_validator(state: CloudyIntelState) -> CloudyIntelState:
     """Validate compute architecture for technical correctness."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Compute Validator.
@@ -223,7 +223,7 @@ def compute_validator(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "compute_validator")
     new_state["messages"].append(response)
@@ -242,7 +242,7 @@ def compute_validator(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def network_validator(state: CloudyIntelState) -> CloudyIntelState:
+async def network_validator(state: CloudyIntelState) -> CloudyIntelState:
     """Validate network architecture for technical correctness."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Network Validator.
@@ -261,7 +261,7 @@ def network_validator(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "network_validator")
     new_state["messages"].append(response)
@@ -279,7 +279,7 @@ def network_validator(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def storage_validator(state: CloudyIntelState) -> CloudyIntelState:
+async def storage_validator(state: CloudyIntelState) -> CloudyIntelState:
     """Validate storage architecture for technical correctness."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Storage Validator.
@@ -298,7 +298,7 @@ def storage_validator(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "storage_validator")
     new_state["messages"].append(response)
@@ -316,7 +316,7 @@ def storage_validator(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def database_validator(state: CloudyIntelState) -> CloudyIntelState:
+async def database_validator(state: CloudyIntelState) -> CloudyIntelState:
     """Validate database architecture for technical correctness."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Database Validator.
@@ -335,7 +335,7 @@ def database_validator(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "database_validator")
     new_state["messages"].append(response)
@@ -357,7 +357,7 @@ def database_validator(state: CloudyIntelState) -> CloudyIntelState:
 # PHASE 3: PILLAR AUDITOR TEAM
 # =============================================================================
 
-def pillar_audit_supervisor(state: CloudyIntelState) -> CloudyIntelState:
+async def pillar_audit_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     """Supervisor that coordinates all pillar auditors."""
     system_prompt = f"""
     You are the Pillar Audit Supervisor for {state['cloud_provider'].upper()} architecture auditing.
@@ -376,7 +376,7 @@ def pillar_audit_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = state.copy()
     new_state["messages"].append(response)
@@ -386,7 +386,7 @@ def pillar_audit_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def security_auditor(state: CloudyIntelState) -> CloudyIntelState:
+async def security_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """Audit architecture for security best practices."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Security Auditor.
@@ -405,7 +405,7 @@ def security_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "security_auditor")
     new_state["messages"].append(response)
@@ -423,7 +423,7 @@ def security_auditor(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def cost_auditor(state: CloudyIntelState) -> CloudyIntelState:
+async def cost_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """Audit architecture for cost optimization."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Cost Auditor.
@@ -442,7 +442,7 @@ def cost_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "cost_auditor")
     new_state["messages"].append(response)
@@ -460,7 +460,7 @@ def cost_auditor(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def reliability_auditor(state: CloudyIntelState) -> CloudyIntelState:
+async def reliability_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """Audit architecture for reliability and availability."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Reliability Auditor.
@@ -479,7 +479,7 @@ def reliability_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "reliability_auditor")
     new_state["messages"].append(response)
@@ -497,7 +497,7 @@ def reliability_auditor(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def performance_auditor(state: CloudyIntelState) -> CloudyIntelState:
+async def performance_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """Audit architecture for performance optimization."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Performance Auditor.
@@ -516,7 +516,7 @@ def performance_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "performance_auditor")
     new_state["messages"].append(response)
@@ -534,7 +534,7 @@ def performance_auditor(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
-def operational_excellence_auditor(state: CloudyIntelState) -> CloudyIntelState:
+async def operational_excellence_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """Audit architecture for operational excellence."""
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Operational Excellence Auditor.
@@ -553,7 +553,7 @@ def operational_excellence_auditor(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = mark_agent_complete(state, "operational_excellence_auditor")
     new_state["messages"].append(response)
@@ -575,7 +575,7 @@ def operational_excellence_auditor(state: CloudyIntelState) -> CloudyIntelState:
 # FINAL PRESENTER
 # =============================================================================
 
-def final_presenter(state: CloudyIntelState) -> CloudyIntelState:
+async def final_presenter(state: CloudyIntelState) -> CloudyIntelState:
     """Present the final approved architecture."""
     system_prompt = f"""
     You are the Final Presenter for CloudyIntel.
@@ -597,7 +597,7 @@ def final_presenter(state: CloudyIntelState) -> CloudyIntelState:
     """
     
     messages = [SystemMessage(content=system_prompt)]
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     
     new_state = state.copy()
     new_state["messages"].append(response)
