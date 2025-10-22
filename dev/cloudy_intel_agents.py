@@ -55,6 +55,20 @@ async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     
     return new_state
 
+async def architect_coordinator(state: CloudyIntelState) -> CloudyIntelState:
+    """Coordinates the completion of all architect agents."""
+    # This is a simple pass-through coordinator
+    # All architect agents have already completed and updated the state
+    # We just need to ensure the state is properly coordinated
+    
+    new_state = state.copy()
+    new_state["messages"].append({
+        "role": "system",
+        "content": "All architect agents have completed their tasks. Moving to validation phase."
+    })
+    
+    return new_state
+
 async def compute_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure compute domain architect."""
     system_prompt = f"""

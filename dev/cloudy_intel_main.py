@@ -22,7 +22,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from cloudy_intel_state import CloudyIntelState, create_initial_state, Phase
 from cloudy_intel_agents import (
-    architect_supervisor, compute_architect, network_architect, storage_architect, database_architect,
+    architect_supervisor, architect_coordinator, compute_architect, network_architect, storage_architect, database_architect,
     validator_supervisor, compute_validator, network_validator, storage_validator, database_validator,
     pillar_audit_supervisor, security_auditor, cost_auditor, reliability_auditor, performance_auditor, operational_excellence_auditor,
     final_presenter
@@ -58,6 +58,7 @@ class CloudyIntel:
         
         # Phase 1: Architect Team
         graph_builder.add_node("architect_supervisor", architect_supervisor)
+        graph_builder.add_node("architect_coordinator", architect_coordinator)
         
         if self.use_rag:
             # Use enhanced agents with RAG
@@ -116,30 +117,23 @@ class CloudyIntel:
         # Start with architect supervisor
         graph_builder.add_edge(START, "architect_supervisor")
         
-        # Phase 1: Architect team coordination
-        graph_builder.add_conditional_edges(
-            "architect_supervisor",
-            agent_completion_router,
-            {
-                "continue_generation": "compute_architect",
-                "move_to_validation": "validator_supervisor"
-            }
-        )
+        # Phase 1: Architect team coordination - all architects run in parallel
+        # No conditional routing needed here as all architects start from supervisor
         
-        # Architect team parallel execution
-        graph_builder.add_edge("compute_architect", "network_architect")
-        graph_builder.add_edge("network_architect", "storage_architect")
-        graph_builder.add_edge("storage_architect", "database_architect")
+        # Architect team parallel execution - all start from supervisor
+        graph_builder.add_edge("architect_supervisor", "compute_architect")
+        graph_builder.add_edge("architect_supervisor", "network_architect")
+        graph_builder.add_edge("architect_supervisor", "storage_architect")
+        graph_builder.add_edge("architect_supervisor", "database_architect")
         
-        # After all architects complete, move to validation
-        graph_builder.add_conditional_edges(
-            "database_architect",
-            agent_completion_router,
-            {
-                "continue_generation": "compute_architect",  # Should not happen
-                "move_to_validation": "validator_supervisor"
-            }
-        )
+        # All architects converge to a coordination point
+        graph_builder.add_edge("compute_architect", "architect_coordinator")
+        graph_builder.add_edge("network_architect", "architect_coordinator")
+        graph_builder.add_edge("storage_architect", "architect_coordinator")
+        graph_builder.add_edge("database_architect", "architect_coordinator")
+        
+        # Architect coordinator routes to validation supervisor
+        graph_builder.add_edge("architect_coordinator", "validator_supervisor")
         
         # Phase 2: Validator team coordination
         graph_builder.add_conditional_edges(
@@ -151,20 +145,17 @@ class CloudyIntel:
             }
         )
         
-        # Validator team parallel execution
-        graph_builder.add_edge("compute_validator", "network_validator")
-        graph_builder.add_edge("network_validator", "storage_validator")
-        graph_builder.add_edge("storage_validator", "database_validator")
+        # Validator team parallel execution - all start from supervisor
+        graph_builder.add_edge("validator_supervisor", "compute_validator")
+        graph_builder.add_edge("validator_supervisor", "network_validator")
+        graph_builder.add_edge("validator_supervisor", "storage_validator")
+        graph_builder.add_edge("validator_supervisor", "database_validator")
         
-        # After all validators complete, evaluate feedback
-        graph_builder.add_conditional_edges(
-            "database_validator",
-            agent_completion_router,
-            {
-                "continue_validation": "compute_validator",  # Should not happen
-                "evaluate_validation": "evaluate_validation_feedback"
-            }
-        )
+        # All validators converge to evaluation
+        graph_builder.add_edge("compute_validator", "evaluate_validation_feedback")
+        graph_builder.add_edge("network_validator", "evaluate_validation_feedback")
+        graph_builder.add_edge("storage_validator", "evaluate_validation_feedback")
+        graph_builder.add_edge("database_validator", "evaluate_validation_feedback")
         
         # Validation feedback evaluation
         graph_builder.add_conditional_edges(
@@ -186,21 +177,19 @@ class CloudyIntel:
             }
         )
         
-        # Auditor team parallel execution
-        graph_builder.add_edge("security_auditor", "cost_auditor")
-        graph_builder.add_edge("cost_auditor", "reliability_auditor")
-        graph_builder.add_edge("reliability_auditor", "performance_auditor")
-        graph_builder.add_edge("performance_auditor", "operational_excellence_auditor")
+        # Auditor team parallel execution - all start from supervisor
+        graph_builder.add_edge("pillar_audit_supervisor", "security_auditor")
+        graph_builder.add_edge("pillar_audit_supervisor", "cost_auditor")
+        graph_builder.add_edge("pillar_audit_supervisor", "reliability_auditor")
+        graph_builder.add_edge("pillar_audit_supervisor", "performance_auditor")
+        graph_builder.add_edge("pillar_audit_supervisor", "operational_excellence_auditor")
         
-        # After all auditors complete, evaluate feedback
-        graph_builder.add_conditional_edges(
-            "operational_excellence_auditor",
-            agent_completion_router,
-            {
-                "continue_audit": "security_auditor",  # Should not happen
-                "evaluate_audit": "evaluate_audit_feedback"
-            }
-        )
+        # All auditors converge to evaluation
+        graph_builder.add_edge("security_auditor", "evaluate_audit_feedback")
+        graph_builder.add_edge("cost_auditor", "evaluate_audit_feedback")
+        graph_builder.add_edge("reliability_auditor", "evaluate_audit_feedback")
+        graph_builder.add_edge("performance_auditor", "evaluate_audit_feedback")
+        graph_builder.add_edge("operational_excellence_auditor", "evaluate_audit_feedback")
         
         # Audit feedback evaluation
         graph_builder.add_conditional_edges(
