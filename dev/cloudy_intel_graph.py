@@ -55,7 +55,7 @@ def build_cloudy_intel_graph():
     # Start with architect supervisor
     graph_builder.add_edge(START, "architect_supervisor")
     
-    # Phase 1: Architect team coordination
+    # Phase 1: Architect team coordination with dynamic routing
     graph_builder.add_conditional_edges(
         "architect_supervisor",
         agent_completion_router,
@@ -65,22 +65,68 @@ def build_cloudy_intel_graph():
         }
     )
     
-    # Architect team parallel execution
-    graph_builder.add_edge("compute_architect", "network_architect")
-    graph_builder.add_edge("network_architect", "storage_architect")
-    graph_builder.add_edge("storage_architect", "database_architect")
+    # Dynamic architect routing based on relevance
+    def architect_router(state: CloudyIntelState) -> str:
+        """Route to the next relevant architect or move to validation."""
+        from cloudy_intel_routing import determine_relevant_agents
+        
+        relevant_agents = determine_relevant_agents(state["user_problem"])
+        completed_agents = state.get("completed_agents", [])
+        
+        # Find the next agent that hasn't completed yet
+        for agent in relevant_agents:
+            if agent not in completed_agents:
+                return agent
+        
+        # If all relevant agents are done, move to validation
+        return "validator_supervisor"
     
-    # After all architects complete, move to validation
+    # Add conditional edges for each architect
     graph_builder.add_conditional_edges(
-        "database_architect",
-        agent_completion_router,
+        "compute_architect",
+        architect_router,
         {
-            "continue_generation": "compute_architect",  # Should not happen
-            "move_to_validation": "validator_supervisor"
+            "network_architect": "network_architect",
+            "storage_architect": "storage_architect", 
+            "database_architect": "database_architect",
+            "validator_supervisor": "validator_supervisor"
         }
     )
     
-    # Phase 2: Validator team coordination
+    graph_builder.add_conditional_edges(
+        "network_architect",
+        architect_router,
+        {
+            "compute_architect": "compute_architect",
+            "storage_architect": "storage_architect",
+            "database_architect": "database_architect", 
+            "validator_supervisor": "validator_supervisor"
+        }
+    )
+    
+    graph_builder.add_conditional_edges(
+        "storage_architect",
+        architect_router,
+        {
+            "compute_architect": "compute_architect",
+            "network_architect": "network_architect",
+            "database_architect": "database_architect",
+            "validator_supervisor": "validator_supervisor"
+        }
+    )
+    
+    graph_builder.add_conditional_edges(
+        "database_architect",
+        architect_router,
+        {
+            "compute_architect": "compute_architect",
+            "network_architect": "network_architect",
+            "storage_architect": "storage_architect",
+            "validator_supervisor": "validator_supervisor"
+        }
+    )
+    
+    # Phase 2: Validator team coordination with dynamic routing
     graph_builder.add_conditional_edges(
         "validator_supervisor",
         agent_completion_router,
@@ -90,18 +136,65 @@ def build_cloudy_intel_graph():
         }
     )
     
-    # Validator team parallel execution
-    graph_builder.add_edge("compute_validator", "network_validator")
-    graph_builder.add_edge("network_validator", "storage_validator")
-    graph_builder.add_edge("storage_validator", "database_validator")
+    # Dynamic validator routing based on relevance
+    def validator_router(state: CloudyIntelState) -> str:
+        """Route to the next relevant validator or move to evaluation."""
+        from cloudy_intel_routing import determine_relevant_agents
+        
+        relevant_architects = determine_relevant_agents(state["user_problem"])
+        relevant_validators = [agent.replace("_architect", "_validator") for agent in relevant_architects]
+        completed_agents = state.get("completed_agents", [])
+        
+        # Find the next validator that hasn't completed yet
+        for validator in relevant_validators:
+            if validator not in completed_agents:
+                return validator
+        
+        # If all relevant validators are done, move to evaluation
+        return "evaluate_validation_feedback"
     
-    # After all validators complete, evaluate feedback
+    # Add conditional edges for each validator
+    graph_builder.add_conditional_edges(
+        "compute_validator",
+        validator_router,
+        {
+            "network_validator": "network_validator",
+            "storage_validator": "storage_validator",
+            "database_validator": "database_validator",
+            "evaluate_validation_feedback": "evaluate_validation_feedback"
+        }
+    )
+    
+    graph_builder.add_conditional_edges(
+        "network_validator",
+        validator_router,
+        {
+            "compute_validator": "compute_validator",
+            "storage_validator": "storage_validator",
+            "database_validator": "database_validator",
+            "evaluate_validation_feedback": "evaluate_validation_feedback"
+        }
+    )
+    
+    graph_builder.add_conditional_edges(
+        "storage_validator",
+        validator_router,
+        {
+            "compute_validator": "compute_validator",
+            "network_validator": "network_validator",
+            "database_validator": "database_validator",
+            "evaluate_validation_feedback": "evaluate_validation_feedback"
+        }
+    )
+    
     graph_builder.add_conditional_edges(
         "database_validator",
-        agent_completion_router,
+        validator_router,
         {
-            "continue_validation": "compute_validator",  # Should not happen
-            "evaluate_validation": "evaluate_validation_feedback"
+            "compute_validator": "compute_validator",
+            "network_validator": "network_validator",
+            "storage_validator": "storage_validator",
+            "evaluate_validation_feedback": "evaluate_validation_feedback"
         }
     )
     

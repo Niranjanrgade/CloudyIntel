@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import Tool
 from langchain_community.utilities import GoogleSerperAPIWrapper
 from cloudy_intel_state import CloudyIntelState, Phase, mark_agent_complete
+from cloudy_intel_routing import determine_relevant_agents
 
 # Initialize LLM and tools
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
@@ -24,7 +25,23 @@ llm_with_tools = llm.bind_tools(tools)
 # =============================================================================
 
 async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
-    """Supervisor that coordinates all architect agents."""
+    """Supervisor that coordinates relevant architect agents based on the problem."""
+    # Determine which agents are actually needed
+    relevant_agents = determine_relevant_agents(state["user_problem"])
+    
+    # Create domain descriptions for the prompt
+    domain_descriptions = {
+        "compute_architect": "Compute Architect (EC2, Lambda, ECS, etc.)",
+        "network_architect": "Network Architect (VPC, ALB, CloudFront, etc.)",
+        "storage_architect": "Storage Architect (S3, EBS, EFS, etc.)",
+        "database_architect": "Database Architect (RDS, DynamoDB, ElastiCache, etc.)"
+    }
+    
+    # Build the task list for relevant agents only
+    task_list = []
+    for i, agent in enumerate(relevant_agents, 1):
+        task_list.append(f"{i}. {domain_descriptions[agent]}")
+    
     system_prompt = f"""
     You are the Architect Supervisor for {state['cloud_provider'].upper()} cloud architecture.
     Your role is to decompose the user problem and coordinate domain architects.
@@ -36,11 +53,8 @@ async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     - Validation Feedback: {state['validation_feedback']}
     - Audit Feedback: {state['audit_feedback']}
     
-    Decompose the problem into tasks for:
-    1. Compute Architect (EC2, Lambda, ECS, etc.)
-    2. Network Architect (VPC, ALB, CloudFront, etc.)
-    3. Storage Architect (S3, EBS, EFS, etc.)
-    4. Database Architect (RDS, DynamoDB, ElastiCache, etc.)
+    Based on the problem analysis, coordinate the following relevant domain architects:
+    {chr(10).join(task_list)}
     
     Provide clear instructions for each domain architect.
     """
@@ -50,7 +64,7 @@ async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     
     new_state = state.copy()
     new_state["messages"].append(response)
-    new_state["active_agents"] = ["compute_architect", "network_architect", "storage_architect", "database_architect"]
+    new_state["active_agents"] = relevant_agents
     new_state["completed_agents"] = []
     
     return new_state
@@ -191,18 +205,32 @@ async def database_architect(state: CloudyIntelState) -> CloudyIntelState:
 # =============================================================================
 
 async def validator_supervisor(state: CloudyIntelState) -> CloudyIntelState:
-    """Supervisor that coordinates all validator agents."""
+    """Supervisor that coordinates relevant validator agents based on the problem."""
+    # Determine which validators are needed based on the original problem
+    relevant_architects = determine_relevant_agents(state["user_problem"])
+    relevant_validators = [agent.replace("_architect", "_validator") for agent in relevant_architects]
+    
+    # Create validator descriptions for the prompt
+    validator_descriptions = {
+        "compute_validator": "Compute Validator (check EC2, Lambda, ECS configurations)",
+        "network_validator": "Network Validator (check VPC, security groups, routing)",
+        "storage_validator": "Storage Validator (check S3, EBS, EFS configurations)",
+        "database_validator": "Database Validator (check RDS, DynamoDB, ElastiCache)"
+    }
+    
+    # Build the task list for relevant validators only
+    task_list = []
+    for i, validator in enumerate(relevant_validators, 1):
+        task_list.append(f"{i}. {validator_descriptions[validator]}")
+    
     system_prompt = f"""
     You are the Validator Supervisor for {state['cloud_provider'].upper()} architecture validation.
     Your role is to coordinate domain validators to check factual correctness.
     
     Architecture to validate: {state['architecture_components']}
     
-    Coordinate validation for:
-    1. Compute Validator (check EC2, Lambda, ECS configurations)
-    2. Network Validator (check VPC, security groups, routing)
-    3. Storage Validator (check S3, EBS, EFS configurations)
-    4. Database Validator (check RDS, DynamoDB, ElastiCache)
+    Based on the problem analysis, coordinate validation for:
+    {chr(10).join(task_list)}
     
     Focus on technical correctness and compatibility.
     """
@@ -212,7 +240,7 @@ async def validator_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     
     new_state = state.copy()
     new_state["messages"].append(response)
-    new_state["active_agents"] = ["compute_validator", "network_validator", "storage_validator", "database_validator"]
+    new_state["active_agents"] = relevant_validators
     new_state["completed_agents"] = []
     new_state["current_phase"] = Phase.VALIDATE
     

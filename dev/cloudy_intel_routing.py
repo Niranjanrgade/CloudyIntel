@@ -1,5 +1,63 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from cloudy_intel_state import CloudyIntelState, Phase, check_iteration_limit
+
+def determine_relevant_agents(user_problem: str) -> List[str]:
+    """
+    Intelligently determine which architect agents are relevant based on the user's problem.
+    This prevents unnecessary token usage by only running relevant agents.
+    """
+    problem_lower = user_problem.lower()
+    relevant_agents = []
+    
+    # Storage-related keywords
+    storage_keywords = [
+        'store', 'storage', 'data', 'file', 'backup', 'archive', 's3', 'bucket',
+        'volume', 'disk', 'nas', 'filesystem', 'object storage', 'block storage',
+        'retention', 'lifecycle', 'cold storage', 'hot storage'
+    ]
+    
+    # Database-related keywords  
+    database_keywords = [
+        'database', 'db', 'sql', 'nosql', 'query', 'table', 'index', 'transaction',
+        'rds', 'dynamodb', 'postgres', 'mysql', 'oracle', 'sql server', 'mongodb',
+        'redis', 'cache', 'data warehouse', 'analytics', 'reporting'
+    ]
+    
+    # Compute-related keywords
+    compute_keywords = [
+        'compute', 'server', 'instance', 'cpu', 'memory', 'processing', 'application',
+        'api', 'service', 'microservice', 'container', 'docker', 'kubernetes',
+        'lambda', 'function', 'serverless', 'ec2', 'ecs', 'eks', 'fargate'
+    ]
+    
+    # Network-related keywords
+    network_keywords = [
+        'network', 'vpc', 'subnet', 'security group', 'load balancer', 'dns',
+        'cdn', 'cloudfront', 'route53', 'vpn', 'direct connect', 'nat',
+        'firewall', 'routing', 'bandwidth', 'latency', 'connectivity'
+    ]
+    
+    # Check for storage relevance
+    if any(keyword in problem_lower for keyword in storage_keywords):
+        relevant_agents.append("storage_architect")
+    
+    # Check for database relevance
+    if any(keyword in problem_lower for keyword in database_keywords):
+        relevant_agents.append("database_architect")
+    
+    # Check for compute relevance
+    if any(keyword in problem_lower for keyword in compute_keywords):
+        relevant_agents.append("compute_architect")
+    
+    # Check for network relevance
+    if any(keyword in problem_lower for keyword in network_keywords):
+        relevant_agents.append("network_architect")
+    
+    # If no specific domains are detected, default to all agents for comprehensive coverage
+    if not relevant_agents:
+        relevant_agents = ["compute_architect", "network_architect", "storage_architect", "database_architect"]
+    
+    return relevant_agents
 
 def phase_router(state: CloudyIntelState) -> str:
     """
@@ -55,25 +113,30 @@ def outer_loop_router(state: CloudyIntelState) -> str:
 def agent_completion_router(state: CloudyIntelState) -> str:
     """
     Routes based on which agents have completed their tasks.
+    Uses intelligent filtering to only require relevant agents.
     """
     if state["current_phase"] == Phase.GENERATE:
-        # Check if all architects are done
-        required_agents = ["compute_architect", "network_architect", "storage_architect", "database_architect"]
+        # Determine which agents are actually needed based on the problem
+        required_agents = determine_relevant_agents(state["user_problem"])
+        
+        # Check if all relevant architects are done
         if all(agent in state["completed_agents"] for agent in required_agents):
             return "move_to_validation"
         else:
             return "continue_generation"
     
     elif state["current_phase"] == Phase.VALIDATE:
-        # Check if all validators are done
-        required_agents = ["compute_validator", "network_validator", "storage_validator", "database_validator"]
+        # Determine which validators are needed based on the original problem
+        relevant_architects = determine_relevant_agents(state["user_problem"])
+        required_agents = [agent.replace("_architect", "_validator") for agent in relevant_architects]
+        
         if all(agent in state["completed_agents"] for agent in required_agents):
             return "evaluate_validation"
         else:
             return "continue_validation"
     
     elif state["current_phase"] == Phase.AUDIT:
-        # Check if all auditors are done
+        # All auditors are always needed for comprehensive quality assessment
         required_agents = ["security_auditor", "cost_auditor", "reliability_auditor", "performance_auditor", "operational_excellence_auditor"]
         if all(agent in state["completed_agents"] for agent in required_agents):
             return "evaluate_audit"
