@@ -17,6 +17,10 @@ class CloudyIntelState(TypedDict):
     current_phase: Phase
     iteration_count: int
     
+    # Task decomposition
+    decomposed_tasks: Dict[str, Dict[str, Any]]  # domain -> task details
+    task_assignments: Dict[str, str]  # domain -> assigned task description
+    
     # Architecture components
     proposed_architecture: Dict[str, Any]
     architecture_components: Dict[str, Dict[str, Any]]  # domain -> component details
@@ -49,6 +53,8 @@ def create_initial_state(user_problem: str, cloud_provider: str = "aws") -> Clou
         user_problem=user_problem,
         current_phase=Phase.GENERATE,
         iteration_count=0,
+        decomposed_tasks={},
+        task_assignments={},
         proposed_architecture={},
         architecture_components={},
         validation_feedback=[],

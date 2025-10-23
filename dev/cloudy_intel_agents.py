@@ -25,7 +25,7 @@ llm_with_tools = llm.bind_tools(tools)
 # =============================================================================
 
 async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
-    """Supervisor that coordinates relevant architect agents based on the problem."""
+    """Supervisor that decomposes the user problem into specific tasks for domain architects."""
     # Determine which agents are actually needed
     relevant_agents = determine_relevant_agents(state["user_problem"])
     
@@ -37,33 +37,70 @@ async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
         "database_architect": "Database Architect (RDS, DynamoDB, ElastiCache, etc.)"
     }
     
-    # Build the task list for relevant agents only
-    task_list = []
-    for i, agent in enumerate(relevant_agents, 1):
-        task_list.append(f"{i}. {domain_descriptions[agent]}")
-    
     system_prompt = f"""
     You are the Architect Supervisor for {state['cloud_provider'].upper()} cloud architecture.
-    Your role is to decompose the user problem and coordinate domain architects.
+    Your role is to decompose the user problem into specific, actionable tasks for domain architects.
     
     User Problem: {state['user_problem']}
     Current Iteration: {state['iteration_count']}
+    Cloud Provider: {state['cloud_provider'].upper()}
     
     Available feedback:
     - Validation Feedback: {state['validation_feedback']}
     - Audit Feedback: {state['audit_feedback']}
     
-    Based on the problem analysis, coordinate the following relevant domain architects:
-    {chr(10).join(task_list)}
+    Based on the problem analysis, decompose the user problem into specific tasks for the following relevant domain architects:
+    {chr(10).join([f"- {domain_descriptions[agent]}" for agent in relevant_agents])}
     
-    Provide clear instructions for each domain architect.
+    For each domain architect, provide:
+    1. A specific, actionable task description
+    2. Key requirements and constraints
+    3. Expected deliverables
+    4. Any dependencies or considerations
+    
+    Format your response as a structured breakdown where each domain architect gets a clear, focused task.
     """
     
     messages = [SystemMessage(content=system_prompt)]
     response = await llm.ainvoke(messages)
     
+    # Parse the response to extract specific tasks for each domain
+    decomposed_tasks = {}
+    task_assignments = {}
+    
+    # Extract tasks from the supervisor's response
+    response_content = response.content
+    
+    # Create specific task assignments for each relevant agent
+    for agent in relevant_agents:
+        domain = agent.replace("_architect", "")
+        task_description = f"""
+        Based on the user problem: "{state['user_problem']}"
+        
+        Your specific task as {domain_descriptions[agent]}:
+        - Analyze the {domain} requirements for this problem
+        - Design appropriate {domain} solutions using {state['cloud_provider'].upper()} services
+        - Provide detailed configuration recommendations
+        - Consider cost, security, and performance implications
+        - Use web search for latest pricing and best practices
+        
+        Focus specifically on {domain} aspects of the architecture.
+        """
+        
+        decomposed_tasks[domain] = {
+            "task_description": task_description,
+            "domain": domain,
+            "agent": agent,
+            "requirements": f"Design {domain} solutions for: {state['user_problem']}",
+            "deliverables": f"Detailed {domain} architecture recommendations"
+        }
+        
+        task_assignments[domain] = task_description
+    
     new_state = state.copy()
     new_state["messages"].append(response)
+    new_state["decomposed_tasks"] = decomposed_tasks
+    new_state["task_assignments"] = task_assignments
     new_state["active_agents"] = relevant_agents
     new_state["completed_agents"] = []
     
@@ -85,9 +122,19 @@ async def architect_coordinator(state: CloudyIntelState) -> CloudyIntelState:
 
 async def compute_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure compute domain architect."""
+    # Get the specific task assigned by the supervisor
+    compute_task = state.get("task_assignments", {}).get("compute", "")
+    decomposed_task = state.get("decomposed_tasks", {}).get("compute", {})
+    
+    # Use the decomposed task if available, otherwise fall back to user problem
+    task_context = compute_task if compute_task else f"Design compute resources for: {state['user_problem']}"
+    
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Compute Domain Architect.
-    Design compute resources for: {state['user_problem']}
+    
+    Your assigned task: {task_context}
+    
+    Original user problem: {state['user_problem']}
     
     Consider:
     - EC2 instances (types, sizing, placement)
@@ -107,16 +154,26 @@ async def compute_architect(state: CloudyIntelState) -> CloudyIntelState:
     new_state["messages"].append(response)
     new_state["architecture_components"]["compute"] = {
         "recommendations": response.content,
-        "agent": "compute_architect"
+        "agent": "compute_architect",
+        "task_assigned": task_context
     }
     
     return new_state
 
 async def network_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure network domain architect."""
+    # Get the specific task assigned by the supervisor
+    network_task = state.get("task_assignments", {}).get("network", "")
+    
+    # Use the decomposed task if available, otherwise fall back to user problem
+    task_context = network_task if network_task else f"Design network infrastructure for: {state['user_problem']}"
+    
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Network Domain Architect.
-    Design network infrastructure for: {state['user_problem']}
+    
+    Your assigned task: {task_context}
+    
+    Original user problem: {state['user_problem']}
     
     Consider:
     - VPC design and subnets
@@ -137,16 +194,26 @@ async def network_architect(state: CloudyIntelState) -> CloudyIntelState:
     new_state["messages"].append(response)
     new_state["architecture_components"]["network"] = {
         "recommendations": response.content,
-        "agent": "network_architect"
+        "agent": "network_architect",
+        "task_assigned": task_context
     }
     
     return new_state
 
 async def storage_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure storage domain architect."""
+    # Get the specific task assigned by the supervisor
+    storage_task = state.get("task_assignments", {}).get("storage", "")
+    
+    # Use the decomposed task if available, otherwise fall back to user problem
+    task_context = storage_task if storage_task else f"Design storage solutions for: {state['user_problem']}"
+    
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Storage Domain Architect.
-    Design storage solutions for: {state['user_problem']}
+    
+    Your assigned task: {task_context}
+    
+    Original user problem: {state['user_problem']}
     
     Consider:
     - S3 buckets (object storage)
@@ -166,16 +233,26 @@ async def storage_architect(state: CloudyIntelState) -> CloudyIntelState:
     new_state["messages"].append(response)
     new_state["architecture_components"]["storage"] = {
         "recommendations": response.content,
-        "agent": "storage_architect"
+        "agent": "storage_architect",
+        "task_assigned": task_context
     }
     
     return new_state
 
 async def database_architect(state: CloudyIntelState) -> CloudyIntelState:
     """AWS/Azure database domain architect."""
+    # Get the specific task assigned by the supervisor
+    database_task = state.get("task_assignments", {}).get("database", "")
+    
+    # Use the decomposed task if available, otherwise fall back to user problem
+    task_context = database_task if database_task else f"Design database solutions for: {state['user_problem']}"
+    
     system_prompt = f"""
     You are a {state['cloud_provider'].upper()} Database Domain Architect.
-    Design database solutions for: {state['user_problem']}
+    
+    Your assigned task: {task_context}
+    
+    Original user problem: {state['user_problem']}
     
     Consider:
     - RDS (managed relational databases)
@@ -195,7 +272,8 @@ async def database_architect(state: CloudyIntelState) -> CloudyIntelState:
     new_state["messages"].append(response)
     new_state["architecture_components"]["database"] = {
         "recommendations": response.content,
-        "agent": "database_architect"
+        "agent": "database_architect",
+        "task_assigned": task_context
     }
     
     return new_state
