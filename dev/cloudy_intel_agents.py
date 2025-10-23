@@ -25,66 +25,90 @@ llm_with_tools = llm.bind_tools(tools)
 # =============================================================================
 
 async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
-    """Supervisor that decomposes the user problem into specific tasks for domain architects."""
-    # Determine which agents are actually needed
+    """
+    Dynamic supervisor that uses LLM to decompose user problems into specific tasks for domain architects.
+    This avoids hardcoded task assignments and allows for more intelligent, context-aware decomposition.
+    """
+    # Determine which agents are actually needed based on the problem
     relevant_agents = determine_relevant_agents(state["user_problem"])
     
     # Create domain descriptions for the prompt
     domain_descriptions = {
-        "compute_architect": "Compute Architect (EC2, Lambda, ECS, etc.)",
-        "network_architect": "Network Architect (VPC, ALB, CloudFront, etc.)",
-        "storage_architect": "Storage Architect (S3, EBS, EFS, etc.)",
-        "database_architect": "Database Architect (RDS, DynamoDB, ElastiCache, etc.)"
+        "compute_architect": "Compute Architect (EC2, Lambda, ECS, EKS, Auto Scaling, etc.)",
+        "network_architect": "Network Architect (VPC, Subnets, Security Groups, Load Balancers, DNS, etc.)",
+        "storage_architect": "Storage Architect (S3, EBS, EFS, FSx, Storage Gateway, etc.)",
+        "database_architect": "Database Architect (RDS, DynamoDB, ElastiCache, Redshift, etc.)"
     }
+    
+    # Build context from previous iterations if available
+    previous_context = ""
+    if state["iteration_count"] > 0:
+        previous_context = f"""
+        Previous iteration feedback:
+        - Validation Feedback: {state.get('validation_feedback', [])}
+        - Audit Feedback: {state.get('audit_feedback', [])}
+        - Current Architecture Components: {state.get('architecture_components', {})}
+        """
     
     system_prompt = f"""
     You are the Architect Supervisor for {state['cloud_provider'].upper()} cloud architecture.
-    Your role is to decompose the user problem into specific, actionable tasks for domain architects.
+    Your role is to intelligently decompose the user problem into specific, actionable tasks for domain architects.
     
-    User Problem: {state['user_problem']}
-    Current Iteration: {state['iteration_count']}
-    Cloud Provider: {state['cloud_provider'].upper()}
+    USER PROBLEM: {state['user_problem']}
+    CURRENT ITERATION: {state['iteration_count']}
+    CLOUD PROVIDER: {state['cloud_provider'].upper()}
     
-    Available feedback:
-    - Validation Feedback: {state['validation_feedback']}
-    - Audit Feedback: {state['audit_feedback']}
+    {previous_context}
     
-    Based on the problem analysis, decompose the user problem into specific tasks for the following relevant domain architects:
+    Based on the problem analysis, you need to decompose this problem into specific tasks for the following relevant domain architects:
     {chr(10).join([f"- {domain_descriptions[agent]}" for agent in relevant_agents])}
     
-    For each domain architect, provide:
-    1. A specific, actionable task description
-    2. Key requirements and constraints
-    3. Expected deliverables
-    4. Any dependencies or considerations
+    For each domain architect, you must provide:
+    1. A specific, actionable task description tailored to the user's problem
+    2. Key requirements and constraints specific to this problem
+    3. Expected deliverables that address the user's needs
+    4. Any dependencies or considerations between domains
+    5. Specific {state['cloud_provider'].upper()} services to focus on
     
-    Format your response as a structured breakdown where each domain architect gets a clear, focused task.
+    IMPORTANT: Make each task specific to the user's actual problem, not generic. Consider:
+    - The specific use case and requirements
+    - The scale and complexity of the problem
+    - Any constraints mentioned in the problem
+    - The relationships between different architectural domains
+    
+    Format your response as a structured breakdown where each domain architect gets a clear, focused, and problem-specific task.
     """
     
     messages = [SystemMessage(content=system_prompt)]
     response = await llm.ainvoke(messages)
     
-    # Parse the response to extract specific tasks for each domain
+    # Parse the LLM response to extract specific tasks for each domain
     decomposed_tasks = {}
     task_assignments = {}
     
-    # Extract tasks from the supervisor's response
-    response_content = response.content
-    
-    # Create specific task assignments for each relevant agent
+    # Create specific task assignments for each relevant agent based on LLM analysis
     for agent in relevant_agents:
         domain = agent.replace("_architect", "")
+        
+        # Create a more specific task based on the supervisor's analysis
         task_description = f"""
+        ARCHITECT SUPERVISOR ANALYSIS:
+        {response.content}
+        
+        YOUR SPECIFIC TASK as {domain_descriptions[agent]}:
         Based on the user problem: "{state['user_problem']}"
         
-        Your specific task as {domain_descriptions[agent]}:
-        - Analyze the {domain} requirements for this problem
-        - Design appropriate {domain} solutions using {state['cloud_provider'].upper()} services
-        - Provide detailed configuration recommendations
-        - Consider cost, security, and performance implications
-        - Use web search for latest pricing and best practices
+        Analyze the {domain} requirements for this specific problem and design appropriate {domain} solutions using {state['cloud_provider'].upper()} services.
         
-        Focus specifically on {domain} aspects of the architecture.
+        Focus on:
+        - Requirements specific to this use case
+        - {state['cloud_provider'].upper()} services most relevant to the problem
+        - Detailed configuration recommendations
+        - Cost, security, and performance implications
+        - Integration with other architectural components
+        
+        Use web search for latest pricing, best practices, and service capabilities.
+        Provide actionable recommendations that directly address the user's problem.
         """
         
         decomposed_tasks[domain] = {
@@ -92,7 +116,9 @@ async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
             "domain": domain,
             "agent": agent,
             "requirements": f"Design {domain} solutions for: {state['user_problem']}",
-            "deliverables": f"Detailed {domain} architecture recommendations"
+            "deliverables": f"Detailed {domain} architecture recommendations",
+            "supervisor_analysis": response.content,
+            "cloud_provider": state['cloud_provider'].upper()
         }
         
         task_assignments[domain] = task_description
@@ -101,6 +127,7 @@ async def architect_supervisor(state: CloudyIntelState) -> CloudyIntelState:
     new_state["messages"].append(response)
     new_state["decomposed_tasks"] = decomposed_tasks
     new_state["task_assignments"] = task_assignments
+    new_state["supervisor_analysis"] = response.content
     new_state["active_agents"] = relevant_agents
     new_state["completed_agents"] = []
     

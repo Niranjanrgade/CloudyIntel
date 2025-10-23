@@ -20,6 +20,7 @@ class CloudyIntelState(TypedDict):
     # Task decomposition
     decomposed_tasks: Dict[str, Dict[str, Any]]  # domain -> task details
     task_assignments: Dict[str, str]  # domain -> assigned task description
+    supervisor_analysis: Optional[str]  # LLM analysis from architect supervisor
     
     # Architecture components
     proposed_architecture: Dict[str, Any]
@@ -55,6 +56,7 @@ def create_initial_state(user_problem: str, cloud_provider: str = "aws") -> Clou
         iteration_count=0,
         decomposed_tasks={},
         task_assignments={},
+        supervisor_analysis=None,
         proposed_architecture={},
         architecture_components={},
         validation_feedback=[],
