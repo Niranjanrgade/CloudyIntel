@@ -257,3 +257,4 @@ if __name__ == "__main__":
     vectorstore = setup.create_vector_store(chunks, use_chroma=True)
     
     print("RAG setup complete!")
+
