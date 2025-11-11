@@ -1,0 +1,19 @@
+{
+  "appsync": "https://docs.aws.amazon.com/pdfs/appsync/latest/APIReference/appsync-api.pdf",
+  "athena": "https://docs.aws.amazon.com/pdfs/athena/latest/APIReference/athena-api.pdf",
+  "batch": "https://docs.aws.amazon.com/pdfs/batch/latest/userguide/batch_user.pdf",
+  "cloudfront": "https://docs.aws.amazon.com/pdfs/cloudfront/latest/APIReference/cloudfront-api.pdf",
+  "cloudwatch": "https://docs.aws.amazon.com/pdfs/cloudwatch/latest/APIReference/app-insights-api.pdf",
+  "eks": "https://docs.aws.amazon.com/pdfs/eks/latest/userguide/eks-ug.pdf",
+  "emr": "https://docs.aws.amazon.com/pdfs/emr/latest/APIReference/emr-api.pdf",
+  "glue": "https://docs.aws.amazon.com/pdfs/glue/latest/dg/glue-dg.pdf",
+  "kinesis": "https://docs.aws.amazon.com/pdfs/kinesis/latest/APIReference/kinesis-api.pdf",
+  "kms": "https://docs.aws.amazon.com/pdfs/kms/latest/developerguide/kms-dg.pdf",
+  "lambda": "https://docs.aws.amazon.com/pdfs/lambda/latest/dg/lambda-dg.pdf",
+  "redshift": "https://docs.aws.amazon.com/pdfs/redshift/latest/dg/redshift-dg.pdf",
+  "sagemaker": "https://docs.aws.amazon.com/pdfs/sagemaker/latest/dg/sagemaker-dg.pdf",
+  "sns": "https://docs.aws.amazon.com/pdfs/sns/latest/dg/sns-dg.pdf",
+  "step-functions": "https://docs.aws.amazon.com/pdfs/step-functions/latest/dg/step-functions-dg.pdf",
+  "transfer": "https://docs.aws.amazon.com/pdfs/transfer/latest/userguide/transferfamily-ug.pdf",
+  "vpc": "https://docs.aws.amazon.com/pdfs/vpc/latest/userguide/vpc-ug.pdf"
+}
